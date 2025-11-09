@@ -38,25 +38,65 @@ const asyncHandler = fn => (req, res, next) => Promise.resolve(fn(req, res, next
 app.use((req, res, next) => { req.asyncHandler = asyncHandler; next(); });
 
 app.use('/api/auth', require('./routes/auth.route'));
-// app.use('/api/users', require('./routes/user.route'));
-// app.use('/api/tasks', require('./routes/task.route'));
-// app.use('/api/teams', require('./routes/team.route'));
-// app.use('/api/notifications', require('./routes/notification.route'));
+app.use('/api/users', require('./routes/user.route'));
+app.use('/api/tasks', require('./routes/task.route'));
+app.use('/api/teams', require('./routes/team.route'));
+app.use('/api/notifications', require('./routes/notification.route'));
 app.use('/api/activity-logs', require('./routes/activityLog.route'));
 
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(500).json({
-    message: err.message || 'Something went wrong!',
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+
+  let statusCode = 500;
+  let message = 'Something went wrong!';
+
+  if (err.name === 'ValidationError') {
+    statusCode = 400;
+    message = Object.values(err.errors).map(error => error.message).join(', ');
+  } else if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+    statusCode = 401;
+    message = 'Invalid or expired token';
+  } else if (err.name === 'MongoServerError' && err.code === 11000) {
+    statusCode = 400;
+    message = 'Duplicate key error';
+  } else if (err instanceof TypeError || err instanceof ReferenceError) {
+    message = 'Internal server error';
+  } else {
+    message = err.message || message;
+    statusCode = err.statusCode || err.status || statusCode;
+  }
+
+  res.status(statusCode).json({
+    success: false,
+    message,
+    ...(process.env.NODE_ENV === 'development' && {
+      error: {
+        type: err.name,
+        stack: err.stack,
+        details: err.errors || err
+      }
+    })
   });
 });
 
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+const initializeRBAC = require('./scripts/initRBAC');
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+async function startServer() {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log('✅ Connected to MongoDB');
+
+    await initializeRBAC();
+    console.log('✅ RBAC system initialized');
+
+    const PORT = process.env.PORT || 4000;
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+  } catch (err) {
+    console.error('Server startup error:', err);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 module.exports = app;

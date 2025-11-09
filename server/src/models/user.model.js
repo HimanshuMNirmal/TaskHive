@@ -5,7 +5,7 @@ const UserSchema = new mongoose.Schema({
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true, match: [/^\S+@\S+\.\S+$/, 'Invalid email'] },
     password: { type: String, required: true },
-    role: { type: String, enum: ['admin', 'manager', 'member'], default: 'member'},
+    role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role', required: true },
     teamIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Team' }],
     avatarUrl: { type: String, default: '' },
   settings: {

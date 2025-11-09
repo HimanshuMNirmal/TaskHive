@@ -3,41 +3,86 @@ const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
 
-const { createActivityLog } = require('../controllers/activityLog.controller');
-const setTaskOwnership = require('../middleware/ownershipFor.middleware'); 
-const { authorize } = require('../middleware/auth.middleware'); 
+const { 
+    createActivityLog,
+    getTeamActivityLogs,
+    getTaskActivityLogs,
+    getUserActivityLogs,
+    getActivityLogsByDateRange
+} = require('../controllers/activityLog.controller');
 
 function handleValidation(req, res, next) {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-  next();
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    next();
 }
 
-function conditionalTaskOwnership(req, res, next) {
-  try {
-    const et = req.body && req.body.entityType;
-    if (String(et).toLowerCase() === 'task') {
-      return setTaskOwnership(req, res, next);
-    }
-    return next();
-  } catch (err) {
-    return next(err);
-  }
-}
+router.post('/',
+    [
+        body('type').isIn([
+            'task_created',
+            'task_updated',
+            'task_deleted',
+            'task_status_changed',
+            'task_assigned',
+            'comment_added',
+            'team_created',
+            'team_updated',
+            'team_deleted',
+            'member_added',
+            'member_removed',
+            'member_role_updated'
+        ]).withMessage('Invalid activity type'),
+        body('taskId').optional().isMongoId(),
+        body('teamId').optional().isMongoId(),
+        body('metadata').optional().isObject()
+    ],
+    handleValidation,
+    createActivityLog
+);
 
-// router.post(
-//   '/',
-//   [
-//     body('entityType').isIn(['task', 'team', 'user']),
-//     body('entityId').isMongoId(),
-//     body('action').isIn(['created', 'updated', 'deleted', 'status_changed', 'assigned', 'commented']),
-//     body('userId').isMongoId(),
-//     body('details').optional().isObject()
-//   ],
-//   handleValidation,
-//   conditionalTaskOwnership,        
-//   authorize(),                     
-//   req.asyncHandler(createActivityLog)  
-// );
+router.get('/team/:teamId',
+    [
+        body('page').optional().isInt({ min: 1 }),
+        body('limit').optional().isInt({ min: 1, max: 100 }),
+        body('startDate').optional().isISO8601(),
+        body('endDate').optional().isISO8601()
+    ],
+    handleValidation,
+    getTeamActivityLogs
+);
+
+router.get('/task/:taskId',
+    [
+        body('page').optional().isInt({ min: 1 }),
+        body('limit').optional().isInt({ min: 1, max: 100 })
+    ],
+    handleValidation,
+    getTaskActivityLogs
+);
+
+router.get('/user',
+    [
+        body('page').optional().isInt({ min: 1 }),
+        body('limit').optional().isInt({ min: 1, max: 100 })
+    ],
+    handleValidation,
+    getUserActivityLogs
+);
+
+router.get('/range',
+    [
+        body('startDate').isISO8601().withMessage('Valid start date required'),
+        body('endDate').isISO8601().withMessage('Valid end date required'),
+        body('type').optional().isIn([
+            'task',
+            'team',
+            'user',
+            'all'
+        ])
+    ],
+    handleValidation,
+    getActivityLogsByDateRange
+);
 
 module.exports = router;
