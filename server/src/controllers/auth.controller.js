@@ -8,7 +8,7 @@ const {
   SMTP_PORT,
   SMTP_USER,
   SMTP_PASS,
-  FRONTEND_URL,
+  CLIENT_URL,
   JWT_EXPIRES_IN,
   PASSWORD_RESET_EXPIRES,
   JWT_SECRET
@@ -102,7 +102,7 @@ exports.forgotPassword = async (req, res) => {
     { expiresIn: PASSWORD_RESET_EXPIRES || '15m' }
   );
 
-  const resetUrl = `${FRONTEND_URL.replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(resetToken)}`;
+  const resetUrl = `${CLIENT_URL.replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(resetToken)}`;
 
   const subject = 'TaskHive — Password reset';
   const html = `
