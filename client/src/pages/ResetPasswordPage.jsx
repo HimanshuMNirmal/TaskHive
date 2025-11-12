@@ -1,10 +1,12 @@
 import React from 'react';
 import { useSearchParams, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { useTheme } from '../hooks/useTheme';
 import ResetPasswordForm from '../components/forms/ResetPasswordForm';
 import styles from './Pages.module.css';
 
 export default function ResetPasswordPage() {
+  const { theme } = useTheme();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const authToken = useSelector(s => s.auth.token);

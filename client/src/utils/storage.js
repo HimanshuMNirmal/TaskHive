@@ -1,4 +1,3 @@
-// src/utils/storage.js
 const TOKEN_KEY = 'taskhive_token';
 const USER_KEY = 'taskhive_user';
 

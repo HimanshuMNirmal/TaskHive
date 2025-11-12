@@ -1,18 +1,24 @@
 import { loginUser } from '../../features/auth/authThunks';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import styles from './Forms.module.css';
 
 const LoginForm = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { status, error } = useSelector(s => s.auth);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const onSubmit = e => {
+  const onSubmit = async (e) => {
     e.preventDefault();
-    dispatch(loginUser({ email, password }));
+    const resultAction = await dispatch(loginUser({ email, password }));
+    if (loginUser.fulfilled.match(resultAction)) {
+      setTimeout(() => {
+        navigate('/', { replace: true });
+      }, 100);
+    }
   };
 
   return (

@@ -7,7 +7,6 @@ export const authApi = {
   },
 
   login: async (credentials) => {
-    debugger
     const response = await api.post('/auth/login', credentials)
     return response.data
   },

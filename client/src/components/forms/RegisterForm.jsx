@@ -11,7 +11,8 @@ export function RegisterForm() {
     name: '',
     email: '',
     password: '',
-    role: 'member'
+    organizationName: '',
+    organizationSlug: ''
   })
   const [error, setError] = useState(null)
 
@@ -78,20 +79,41 @@ export function RegisterForm() {
       </div>
 
       <div className={styles.formGroup}>
-        <label htmlFor="role">Role</label>
-        <select
-          id="role"
-          name="role"
-          value={formData.role}
+        <label htmlFor="organizationName">Organization Name</label>
+        <input
+          type="text"
+          id="organizationName"
+          name="organizationName"
+          value={formData.organizationName}
           onChange={handleChange}
-        >
-          <option value="member">Member</option>
-          <option value="manager">Manager</option>
-        </select>
+          required
+        />
+      </div>
+
+      <div className={styles.formGroup}>
+        <label htmlFor="organizationSlug">Organization URL Identifier</label>
+        <input
+          type="text"
+          id="organizationSlug"
+          name="organizationSlug"
+          value={formData.organizationSlug}
+          pattern="[a-z0-9-]+"
+          title="Only lowercase letters, numbers, and hyphens are allowed"
+          placeholder="e.g., my-company"
+          onChange={(e) => {
+            const value = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+            setFormData(prev => ({
+              ...prev,
+              organizationSlug: value
+            }));
+          }}
+          required
+        />
+        <small className={styles.hint}>This will be used in your organization's URL: taskhive.com/{formData.organizationSlug || 'my-company'}</small>
       </div>
 
       <button type="submit" className={styles.submitButton}>
-        Register
+        Create Organization
       </button>
 
       <div className={styles.links}>

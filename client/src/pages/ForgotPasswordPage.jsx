@@ -1,10 +1,12 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { useTheme } from '../hooks/useTheme';
 import { ForgotPasswordForm } from '../components/forms/ForgotPasswordForm';
 import styles from './Pages.module.css';
 
 export default function ForgotPasswordPage() {
+  const { theme } = useTheme();
   const { token } = useSelector(s => s.auth);
   if (token) return <Navigate to="/" replace />;
 

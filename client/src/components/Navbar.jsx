@@ -8,7 +8,6 @@ export function Navbar() {
   const { theme, toggleTheme } = useTheme()
   const dispatch = useDispatch()
   const { token, user } = useSelector((state) => state.auth)
-  console.log('user', user)
   const handleLogout = () => {
     dispatch(logout())
   }
