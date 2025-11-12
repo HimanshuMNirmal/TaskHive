@@ -1,5 +1,6 @@
 const Permission = require('../models/permission.model');
 const Role = require('../models/role.model');
+const User = require('../models/user.model');
 
 class RBACService {
   static async initializeRBAC() {
@@ -23,6 +24,12 @@ class RBACService {
         { name: 'user:delete', description: 'Delete users', resource: 'user', action: 'delete' },
         { name: 'user:manage', description: 'Manage all users', resource: 'user', action: 'manage' },
 
+        { name: 'team:manage_members', description: 'Manage team members (invite, remove, change roles)', resource: 'team', action: 'manage_members' },
+
+        { name: 'activityLog:read', description: 'Read activity logs', resource: 'activityLog', action: 'read' },
+
+        { name: 'notification:read', description: 'Read notifications', resource: 'notification', action: 'read' },
+
         { name: 'system:manage', description: 'Manage system settings', resource: 'all', action: 'manage' },
       ];
 
@@ -39,6 +46,8 @@ class RBACService {
       const teamPermissions = allPermissions.filter(p => p.resource === 'team');
       const userPermissions = allPermissions.filter(p => p.resource === 'user');
       const systemPermissions = allPermissions.filter(p => p.resource === 'all');
+      const activityLogPermissions = allPermissions.filter(p => p.resource === 'activityLog');
+      const notificationPermissions = allPermissions.filter(p => p.resource === 'notification');
 
       const defaultRoles = [
         {
@@ -53,7 +62,9 @@ class RBACService {
           permissions: [
             ...taskPermissions.map(p => p._id),
             ...teamPermissions.filter(p => p.action !== 'delete').map(p => p._id),
-            ...userPermissions.filter(p => p.action === 'read').map(p => p._id)
+            ...userPermissions.filter(p => p.action === 'read').map(p => p._id),
+            ...activityLogPermissions.map(p => p._id),
+            ...notificationPermissions.map(p => p._id)
           ],
           isSystem: true
         },
@@ -63,7 +74,9 @@ class RBACService {
           permissions: [
             ...taskPermissions.filter(p => p.action !== 'delete').map(p => p._id),
             ...teamPermissions.filter(p => p.action === 'read').map(p => p._id),
-            ...userPermissions.filter(p => p.action === 'read').map(p => p._id)
+            ...userPermissions.filter(p => p.action === 'read').map(p => p._id),
+            ...activityLogPermissions.map(p => p._id),
+            ...notificationPermissions.map(p => p._id)
           ],
           isSystem: true
         }

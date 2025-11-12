@@ -3,39 +3,57 @@ const Task = require('../models/task.model');
 const Team = require('../models/team.model');
 const emailService = require('../services/email.service');
 
-exports.createActivityLog = async (req, res) => {
-    const { type, taskId, teamId, metadata } = req.body;
+exports.createActivityLog = async (reqOrPayload, res) => {
+  const isExpress = reqOrPayload && reqOrPayload.body && res;
 
-    const log = new ActivityLog({
-        type,
-        taskId,
-        teamId,
-        userId: req.user.id,
-        metadata,
-        timestamp: new Date()
-    });
+  let type, entityId, entityType, metadata, userId, organizationId;
 
-    await log.save();
+  if (isExpress) {
+    const req = reqOrPayload;
+    ({ type, entityId, entityType, metadata } = req.body || {});
+    userId = req.user?._id;
+    organizationId = req.user?.organizationId;
+  } else {
+    const payload = reqOrPayload || {};
+    ({ type, entityId, entityType, metadata } = payload);
+    userId = payload.userId || payload.user?._id || null;
+    organizationId = payload.organizationId || null;
+  }
 
-    if (type === 'task_assigned' && metadata.assigneeId) {
-        const task = await Task.findById(taskId);
-        const assignee = await User.findById(metadata.assigneeId);
-        
-        if (task && assignee) {
-            await emailService.sendTaskAssignmentEmail({
-                to: assignee.email,
-                name: assignee.name,
-                taskTitle: task.title,
-                taskUrl: `${process.env.CLIENT_URL}/tasks/${task._id}`
-            });
-        }
+  const log = new ActivityLog({
+    entityType,
+    entityId,
+    userId,
+    action: type,
+    details: metadata,
+    organizationId
+  });
+
+  await log.save();
+
+  if (type === 'assigned' && entityType === 'task' && metadata?.assigneeId) {
+    const task = await Task.findById(entityId);
+    const assignee = await User.findById(metadata.assigneeId);
+
+    if (task && assignee && assignee.email) {
+      await emailService.sendTaskAssignmentEmail({
+        to: assignee.email,
+        name: assignee.name,
+        taskTitle: task.title,
+        taskUrl: `${process.env.CLIENT_URL}/tasks/${task._id}`
+      });
     }
+  }
 
-    res.status(201).json({
-        success: true,
-        message: 'Activity log created successfully',
-        data: { log }
+  if (isExpress) {
+    return res.status(201).json({
+      success: true,
+      message: 'Activity log created successfully',
+      data: { log }
     });
+  }
+
+  return log;
 };
 
 exports.getTeamActivityLogs = async (req, res) => {
@@ -48,21 +66,20 @@ exports.getTeamActivityLogs = async (req, res) => {
     } = req.query;
 
     const skip = (page - 1) * limit;
-    const query = { teamId };
+    const query = { entityId: teamId, entityType: 'team' };
 
     if (startDate && endDate) {
-        query.timestamp = {
+        query.createdAt = {
             $gte: new Date(startDate),
             $lte: new Date(endDate)
         };
     }
 
     const logs = await ActivityLog.find(query)
-        .sort({ timestamp: -1 })
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
-        .populate('userId', 'name email')
-        .populate('taskId', 'title');
+        .populate('userId', 'name email');
 
     const total = await ActivityLog.countDocuments(query);
 
@@ -94,13 +111,13 @@ exports.getTaskActivityLogs = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    const logs = await ActivityLog.find({ taskId })
-        .sort({ timestamp: -1 })
+    const logs = await ActivityLog.find({ entityId: taskId, entityType: 'task' })
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
         .populate('userId', 'name email');
 
-    const total = await ActivityLog.countDocuments({ taskId });
+    const total = await ActivityLog.countDocuments({ entityId: taskId, entityType: 'task' });
 
     res.json({
         success: true,
@@ -120,14 +137,13 @@ exports.getUserActivityLogs = async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
     const skip = (page - 1) * limit;
 
-    const logs = await ActivityLog.find({ userId: req.user.id })
-        .sort({ timestamp: -1 })
+    const logs = await ActivityLog.find({ userId: req.user._id })
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
-        .populate('taskId', 'title')
-        .populate('teamId', 'name');
+        .populate('userId', 'name email');
 
-    const total = await ActivityLog.countDocuments({ userId: req.user.id });
+    const total = await ActivityLog.countDocuments({ userId: req.user._id });
 
     res.json({
         success: true,
@@ -149,27 +165,21 @@ exports.getActivityLogsByDateRange = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const query = {
-        timestamp: {
+        createdAt: {
             $gte: new Date(startDate),
             $lte: new Date(endDate)
         }
     };
 
     if (type !== 'all') {
-        if (type === 'task') {
-            query.taskId = { $exists: true };
-        } else if (type === 'team') {
-            query.teamId = { $exists: true };
-        }
+        query.entityType = type;
     }
 
     const logs = await ActivityLog.find(query)
-        .sort({ timestamp: -1 })
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
-        .populate('userId', 'name email')
-        .populate('taskId', 'title')
-        .populate('teamId', 'name');
+        .populate('userId', 'name email');
 
     const total = await ActivityLog.countDocuments(query);
 

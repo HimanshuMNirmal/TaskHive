@@ -30,15 +30,25 @@ router.post('/',
         body('teamId').notEmpty().withMessage('Team ID is required'),
         body('assigneeId').optional(),
         body('dueDate').optional().isISO8601().withMessage('Invalid date format'),
-        body('priority').optional().isIn(['low', 'medium', 'high']).withMessage('Invalid priority'),
-        body('status').optional().isIn(['todo', 'in_progress', 'done']).withMessage('Invalid status')
+        body('priority').optional().isIn(['low', 'medium', 'high', 'critical']).withMessage('Invalid priority'),
+        body('status').optional().isIn(['todo', 'inprogress', 'review', 'done']).withMessage('Invalid status')
     ],
     handleValidation,
     createTask
 );
 
-router.get('/', 
+router.post('/list', 
     checkPermission('task:read'),
+    [
+        body('page').optional().isInt({ min: 1 }),
+        body('limit').optional().isInt({ min: 1, max: 100 }),
+        body('assignee').optional().custom(val => !val || /^[0-9a-fA-F]{24}$/.test(val)).withMessage('Invalid assignee ID'),
+        body('status').optional().custom(val => !val || ['todo', 'inprogress', 'review', 'done'].includes(val)).withMessage('Invalid status'),
+        body('team').optional().custom(val => !val || /^[0-9a-fA-F]{24}$/.test(val)).withMessage('Invalid team ID'),
+        body('dueBefore').optional().isISO8601(),
+        body('priority').optional().custom(val => !val || ['low', 'medium', 'high', 'critical'].includes(val)).withMessage('Invalid priority')
+    ],
+    handleValidation,
     getTasks
 );
 
@@ -52,7 +62,7 @@ router.put('/:id',
     checkOwnership(
         async (req) => {
             const task = await Task.findById(req.params.id);
-            return task ? task.createdBy : null;
+            return task ? task.ownerId : null;
         },
         'task:manage'
     ),
@@ -61,15 +71,22 @@ router.put('/:id',
         body('description').optional().trim(),
         body('assigneeId').optional(),
         body('dueDate').optional().isISO8601().withMessage('Invalid date format'),
-        body('priority').optional().isIn(['low', 'medium', 'high']).withMessage('Invalid priority'),
-        body('status').optional().isIn(['todo', 'in_progress', 'done']).withMessage('Invalid status')
+        body('priority').optional().isIn(['low', 'medium', 'high', 'critical']).withMessage('Invalid priority'),
+        body('status').optional().isIn(['todo', 'inprogress', 'review', 'done']).withMessage('Invalid status')
     ],
     handleValidation,
     updateTask
 );
 
 router.delete('/:id', 
-    checkPermission(['task:delete', 'task:manage']),
+    checkPermission(['task:delete']),
+    checkOwnership(
+        async (req) => {
+            const task = await Task.findById(req.params.id);
+            return task ? task.ownerId : null;
+        },
+        'task:manage'
+    ),
     deleteTask
 );
 

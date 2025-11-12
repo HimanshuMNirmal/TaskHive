@@ -3,20 +3,24 @@ const bcrypt = require('bcryptjs');
 const { Schema } = mongoose;
 const UserSchema = new mongoose.Schema({
     name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true, match: [/^\S+@\S+\.\S+$/, 'Invalid email'] },
+    email: { type: String, required: true, lowercase: true, trim: true, match: [/^\S+@\S+\.\S+$/, 'Invalid email'] },
     password: { type: String, required: true },
+    organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
     role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role', required: true },
     teamIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Team' }],
     avatarUrl: { type: String, default: '' },
-  settings: {
-    notifications: { type: Boolean, default: true },
-    emailPreferences: { type: Schema.Types.Mixed, default: {} }
-  }
+    settings: {
+      notifications: { type: Boolean, default: true },
+      emailPreferences: { type: Schema.Types.Mixed, default: {} }
+    },
+    twoFactorEnabled: { type: Boolean, default: false },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockoutUntil: { type: Date, default: null }
 }, {
   timestamps: true
 });
 
-UserSchema.index({ email: 1 }, { unique: true });
+UserSchema.index({ email: 1, organizationId: 1 }, { unique: true });
 
 UserSchema.pre('save', async function(next) {
     if (!this.isModified('password')) return next();

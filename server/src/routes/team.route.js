@@ -47,7 +47,7 @@ router.put('/:id',
     checkOwnership(
         async (req) => {
             const team = await Team.findById(req.params.id);
-            return team ? team.createdBy : null;
+            return team ? team.ownerId : null;
         },
         'team:manage'
     ),
@@ -60,11 +60,26 @@ router.put('/:id',
 );
 
 router.delete('/:id', 
-    checkPermission(['team:delete', 'team:manage']),
+    checkPermission(['team:delete']),
+    checkOwnership(
+        async (req) => {
+            const team = await Team.findById(req.params.id);
+            return team ? team.ownerId : null;
+        },
+        'team:manage'
+    ),
     deleteTeam
 );
 
 router.post('/:id/members',
+    checkPermission('team:manage_members'),
+    checkOwnership(
+        async (req) => {
+            const team = await Team.findById(req.params.id);
+            return team ? team.ownerId : null;
+        },
+        'team:manage'
+    ),
     [
         body('userId').notEmpty().withMessage('User ID is required'),
         body('role').isIn(['admin', 'manager', 'member']).withMessage('Invalid role')
@@ -74,10 +89,26 @@ router.post('/:id/members',
 );
 
 router.delete('/:id/members/:userId',
+    checkPermission('team:manage_members'),
+    checkOwnership(
+        async (req) => {
+            const team = await Team.findById(req.params.id);
+            return team ? team.ownerId : null;
+        },
+        'team:manage'
+    ),
     removeTeamMember
 );
 
 router.put('/:id/members/:userId',
+    checkPermission('team:manage_members'),
+    checkOwnership(
+        async (req) => {
+            const team = await Team.findById(req.params.id);
+            return team ? team.ownerId : null;
+        },
+        'team:manage'
+    ),
     [
         body('role').isIn(['admin', 'manager', 'member']).withMessage('Invalid role')
     ],

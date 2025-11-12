@@ -13,6 +13,7 @@ const CustomStatusSchema = new Schema({
 }, { _id: false });
 
 const TeamSchema = new Schema({
+  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
   name: { type: String, required: true, trim: true },
   description: { type: String, default: '' },
   ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -26,8 +27,9 @@ const TeamSchema = new Schema({
   timestamps: true
 });
 
-TeamSchema.index({ ownerId: 1 });
-TeamSchema.index({ 'members.userId': 1 });
+TeamSchema.index({ organizationId: 1, ownerId: 1 });
+TeamSchema.index({ organizationId: 1, 'members.userId': 1 });
+TeamSchema.index({ organizationId: 1, name: 1 });
 
 TeamSchema.methods.addMember = async function(userId, role = 'member') {
   const exists = this.members.find(m => m.userId.equals(userId));

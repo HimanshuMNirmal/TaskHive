@@ -27,10 +27,10 @@ exports.createNotification = async ({
 };
 
 exports.getNotifications = async (req, res) => {
-    const { page = 1, limit = 20, unreadOnly = false } = req.query;
+    const { page = 1, limit = 20, unreadOnly = false } = req.body;
     const skip = (page - 1) * limit;
 
-    const query = { userId: req.user.id };
+    const query = { userId: req.user._id };
     if (unreadOnly === 'true') {
         query.read = false;
     }
@@ -42,7 +42,7 @@ exports.getNotifications = async (req, res) => {
 
     const total = await Notification.countDocuments(query);
     const unreadCount = await Notification.countDocuments({
-        userId: req.user.id,
+        userId: req.user._id,
         read: false
     });
 
@@ -65,14 +65,14 @@ exports.markNotificationsAsRead = async (req, res) => {
 
     if (!notificationIds || !notificationIds.length) {
         await Notification.updateMany(
-            { userId: req.user.id, read: false },
+            { userId: req.user._id, read: false },
             { $set: { read: true, readAt: new Date() } }
         );
     } else {
         await Notification.updateMany(
             {
                 _id: { $in: notificationIds },
-                userId: req.user.id
+                userId: req.user._id
             },
             { $set: { read: true, readAt: new Date() } }
         );

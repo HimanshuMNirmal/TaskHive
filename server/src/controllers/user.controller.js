@@ -6,8 +6,11 @@ const Notification = require('../models/notification.model');
 const ActivityLog = require('../models/activityLog.model');
 
 exports.getCurrentUser = async (req, res) => {
-    const user = await User.findById(req.user.id)
-        .select('-password');
+    const user = await User.findById(req.user._id)
+        .select('-password')
+        .populate('organizationId', 'name')
+        .populate('role', 'name permissions')
+        .populate('teamIds', 'name');
 
     if (!user) {
         return res.status(404).json({
@@ -29,7 +32,7 @@ exports.updateUserProfile = async (req, res) => {
 
     if (name) updates.name = name;
     if (email) {
-        const existingUser = await User.findOne({ email, _id: { $ne: req.user.id } });
+        const existingUser = await User.findOne({ email, _id: { $ne: req.user._id } });
         if (existingUser) {
             return res.status(400).json({
                 success: false,
@@ -42,7 +45,7 @@ exports.updateUserProfile = async (req, res) => {
     if (bio !== undefined) updates.bio = bio;
 
     const user = await User.findByIdAndUpdate(
-        req.user.id,
+        req.user._id,
         { $set: updates },
         { new: true }
     ).select('-password');
@@ -55,19 +58,35 @@ exports.updateUserProfile = async (req, res) => {
 };
 
 exports.updateUserSettings = async (req, res) => {
-    const { notifications, emailPreferences, theme, language } = req.body;
+    const { notifications, emailPreferences } = req.body;
     const updates = { settings: {} };
 
-    if (notifications !== undefined) updates.settings.notifications = notifications;
-    if (emailPreferences) updates.settings.emailPreferences = emailPreferences;
-    if (theme) updates.settings.theme = theme;
-    if (language) updates.settings.language = language;
+    if (notifications !== undefined) {
+        updates.settings.notifications = notifications;
+    }
+    
+    if (emailPreferences) {
+        const validatedEmailPrefs = {};
+        if (emailPreferences.taskAssignments !== undefined) {
+            validatedEmailPrefs.taskAssignments = Boolean(emailPreferences.taskAssignments);
+        }
+        if (emailPreferences.teamUpdates !== undefined) {
+            validatedEmailPrefs.teamUpdates = Boolean(emailPreferences.teamUpdates);
+        }
+        if (emailPreferences.reminders !== undefined) {
+            validatedEmailPrefs.reminders = Boolean(emailPreferences.reminders);
+        }
+        updates.settings.emailPreferences = validatedEmailPrefs;
+    }
 
     const user = await User.findByIdAndUpdate(
-        req.user.id,
+        req.user._id,
         { $set: updates },
         { new: true }
-    ).select('-password');
+    )
+    .select('-password')
+    .populate('organizationId', 'name')
+    .populate('role', 'name');
 
     res.json({
         success: true,
@@ -79,7 +98,7 @@ exports.updateUserSettings = async (req, res) => {
 exports.updateUserPassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id);
     if (!user) {
         return res.status(404).json({
             success: false,
@@ -109,15 +128,15 @@ exports.getUserTeams = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const teams = await Team.find({
-        'members.userId': req.user.id
+        'members.userId': req.user._id
     })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
         .populate('members.userId', 'name email avatar')
-        .populate('createdBy', 'name email');
+        .populate('ownerId', 'name email');
 
-    const total = await Team.countDocuments({ 'members.userId': req.user.id });
+    const total = await Team.countDocuments({ 'members.userId': req.user._id });
 
     res.json({
         success: true,
@@ -143,7 +162,7 @@ exports.getUserTasks = async (req, res) => {
     } = req.query;
     
     const skip = (page - 1) * limit;
-    const query = { assigneeId: req.user.id };
+    const query = { assigneeId: req.user._id };
 
     if (status) query.status = status;
     if (priority) query.priority = priority;
@@ -154,7 +173,7 @@ exports.getUserTasks = async (req, res) => {
         .skip(skip)
         .limit(Number(limit))
         .populate('teamId', 'name')
-        .populate('createdBy', 'name email');
+        .populate('ownerId', 'name email');
 
     const total = await Task.countDocuments(query);
 
@@ -176,7 +195,7 @@ exports.getUserNotifications = async (req, res) => {
     const { page = 1, limit = 20, unreadOnly = false } = req.query;
     const skip = (page - 1) * limit;
 
-    const query = { userId: req.user.id };
+    const query = { userId: req.user._id };
     if (unreadOnly === 'true') {
         query.read = false;
     }
@@ -190,7 +209,7 @@ exports.getUserNotifications = async (req, res) => {
 
     const total = await Notification.countDocuments(query);
     const unreadCount = await Notification.countDocuments({
-        userId: req.user.id,
+        userId: req.user._id,
         read: false
     });
 
@@ -212,7 +231,7 @@ exports.updateNotificationSettings = async (req, res) => {
     const { email, push, types } = req.body;
     
     const user = await User.findByIdAndUpdate(
-        req.user.id,
+        req.user._id,
         {
             $set: {
                 'settings.notifications.email': email,
@@ -232,24 +251,22 @@ exports.updateNotificationSettings = async (req, res) => {
 
 exports.getUserActivitySummary = async (req, res) => {
     const { startDate, endDate } = req.query;
-    const query = { userId: req.user.id };
+    const query = { userId: req.user._id };
 
     if (startDate && endDate) {
-        query.timestamp = {
+        query.createdAt = {
             $gte: new Date(startDate),
             $lte: new Date(endDate)
         };
     }
 
     const activities = await ActivityLog.find(query)
-        .sort({ timestamp: -1 })
-        .populate('taskId', 'title')
-        .populate('teamId', 'name');
+        .sort({ createdAt: -1 });
 
     const summary = {
         totalActivities: activities.length,
         byType: {},
-        byTeam: {},
+        byEntityType: {},
         byPeriod: {
             daily: {},
             weekly: {},
@@ -258,14 +275,10 @@ exports.getUserActivitySummary = async (req, res) => {
     };
 
     activities.forEach(activity => {
-        summary.byType[activity.type] = (summary.byType[activity.type] || 0) + 1;
+        summary.byType[activity.action] = (summary.byType[activity.action] || 0) + 1;
+        summary.byEntityType[activity.entityType] = (summary.byEntityType[activity.entityType] || 0) + 1;
 
-        if (activity.teamId) {
-            const teamName = activity.teamId.name;
-            summary.byTeam[teamName] = (summary.byTeam[teamName] || 0) + 1;
-        }
-
-        const date = new Date(activity.timestamp);
+        const date = new Date(activity.createdAt);
         const dayKey = date.toISOString().split('T')[0];
         const weekKey = getWeekNumber(date);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -285,7 +298,7 @@ exports.getUserActivitySummary = async (req, res) => {
 exports.deactivateAccount = async (req, res) => {
     const { password } = req.body;
 
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id);
     if (!user) {
         return res.status(404).json({
             success: false,
@@ -306,14 +319,42 @@ exports.deactivateAccount = async (req, res) => {
     await user.save();
 
     await ActivityLog.create({
-        type: 'account_deactivated',
-        userId: req.user.id,
-        timestamp: new Date()
+        userId: req.user._id,
+        organizationId: req.user.organizationId,
+        action: 'deleted',
+        entityType: 'user',
+        entityId: req.user._id
     });
 
     res.json({
         success: true,
         message: 'Account deactivated successfully'
+    });
+};
+
+exports.getOrganizationUsers = async (req, res) => {
+    const { search = '' } = req.query;
+    
+    const query = {
+        organizationId: req.user.organizationId,
+        _id: { $ne: req.user._id } 
+    };
+
+    if (search) {
+        query.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } }
+        ];
+    }
+
+    const users = await User.find(query)
+        .select('_id name email avatar')
+        .sort({ name: 1 });
+
+    res.json({
+        success: true,
+        message: 'Organization users retrieved successfully',
+        data: { users }
     });
 };
 function getWeekNumber(date) {

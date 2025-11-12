@@ -16,7 +16,7 @@ const CommentAttachmentSchema = new Schema({
 }, { _id: false });
 
 const CommentSchema = new Schema({
-  authorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   text: { type: String, required: true },
   attachments: [CommentAttachmentSchema],
 }, {
@@ -27,7 +27,8 @@ const TaskSchema = new Schema({
   title: { type: String, required: true, trim: true },
   description: { type: String, default: '' },
 
-  creatorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
+  ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   assigneeId: { type: Schema.Types.ObjectId, ref: 'User' },
   teamId: { type: Schema.Types.ObjectId, ref: 'Team' },
 
@@ -63,8 +64,8 @@ TaskSchema.index({ teamId: 1 });
 TaskSchema.index({ status: 1 });
 TaskSchema.index({ dueDate: 1 });
 
-TaskSchema.methods.addComment = async function({ authorId, text, attachments = [] }) {
-  this.comments.push({ authorId, text, attachments });
+TaskSchema.methods.addComment = async function({ userId, text, attachments = [] }) {
+  this.comments.push({ userId, text, attachments });
   await this.save();
   return this.comments[this.comments.length - 1];
 };

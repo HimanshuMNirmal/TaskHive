@@ -1,6 +1,6 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { checkPermission, checkOwnership } = require('../middleware/rbac.middleware');
+const { checkPermission, checkResourcePermission } = require('../middleware/rbac.middleware');
 
 const router = express.Router();
 
@@ -14,7 +14,8 @@ const {
     getUserNotifications,
     updateNotificationSettings,
     getUserActivitySummary,
-    deactivateAccount
+    deactivateAccount,
+    getOrganizationUsers
 } = require('../controllers/user.controller');
 
 function handleValidation(req, res, next) {
@@ -24,6 +25,11 @@ function handleValidation(req, res, next) {
 }
 
 router.get('/me', getCurrentUser);
+
+router.get('/organization/users',
+    checkPermission('user:read'),
+    getOrganizationUsers
+);
 
 router.put('/profile',
     [
@@ -40,11 +46,9 @@ router.put('/settings',
     [
         body('notifications').optional().isBoolean(),
         body('emailPreferences').optional().isObject(),
-        body('emailPreferences.taskAssignments').optional().isBoolean(),
-        body('emailPreferences.teamUpdates').optional().isBoolean(),
-        body('emailPreferences.reminders').optional().isBoolean(),
-        body('theme').optional().isIn(['light', 'dark', 'system']),
-        body('language').optional().isString()
+        body('emailPreferences.taskAssignments').optional().isBoolean().withMessage('Task assignments must be boolean'),
+        body('emailPreferences.teamUpdates').optional().isBoolean().withMessage('Team updates must be boolean'),
+        body('emailPreferences.reminders').optional().isBoolean().withMessage('Reminders must be boolean')
     ],
     handleValidation,
     updateUserSettings
@@ -60,6 +64,7 @@ router.put('/password',
 );
 
 router.get('/teams',
+    checkPermission('team:read'),
     [
         body('page').optional().isInt({ min: 1 }),
         body('limit').optional().isInt({ min: 1, max: 50 })
@@ -69,6 +74,7 @@ router.get('/teams',
 );
 
 router.get('/tasks',
+    checkPermission('task:read'),
     [
         body('page').optional().isInt({ min: 1 }),
         body('limit').optional().isInt({ min: 1, max: 50 }),
@@ -101,6 +107,7 @@ router.put('/notifications/settings',
 );
 
 router.get('/activity/summary',
+    checkPermission('activityLog:read'),
     [
         body('startDate').optional().isISO8601(),
         body('endDate').optional().isISO8601()

@@ -1,43 +1,65 @@
 const nodemailer = require('nodemailer');
-
-const {
-    SMTP_HOST,
-    SMTP_PORT,
-    SMTP_USER,
-    SMTP_PASS,
-} = process.env;
+const settingsService = require('./settings.service');
 
 class EmailService {
     constructor() {
-        this.transporter = nodemailer.createTransport({
-            service: 'gmail',
-            host: SMTP_HOST,
-            port: Number(SMTP_PORT),
-            secure: Number(SMTP_PORT) === 465,
-            auth: {
-                user: SMTP_USER,
-                pass: SMTP_PASS
-            }
-        });
+        this.transporter = null;
+        this.defaultFrom = null;
+        this.initializeTransporter();
     }
 
-    async sendMail({ to, subject, text, html }) {
-        if (!this.transporter) {
-            throw new Error("Email transporter not configured");
+    async initializeTransporter() {
+        try {
+            const emailSettings = await settingsService.getEmailSettings();
+            const { host, port, user, password, from } = emailSettings;
+
+            if (!host || !port || !user || !password) {
+                console.warn('Email settings not fully configured');
+                return;
+            }
+
+            this.transporter = nodemailer.createTransport({
+                host,
+                port: Number(port),
+                secure: Number(port) === 465,
+                auth: {
+                    user,
+                    pass: password
+                }
+            });
+
+            this.defaultFrom = from || user;
+
+            await this.transporter.verify();
+            console.log('✅ Email service initialized');
+        } catch (error) {
+            console.error('Failed to initialize email transporter:', error);
+            this.transporter = null;
         }
+    }
+
+    async ensureTransporter() {
+        if (!this.transporter) {
+            await this.initializeTransporter();
+        }
+        if (!this.transporter) {
+            throw new Error('Email service not configured');
+        }
+    }
+
+    async sendMail(options) {
+        await this.ensureTransporter();
 
         const info = await this.transporter.sendMail({
-            from: `"TaskHive" <${SMTP_USER}>`,
-            to,
-            subject,
-            text,
-            html
+            from: `"TaskHive" <${this.defaultFrom}>`,
+            ...options
         });
 
         return info;
     }
 
-    async sendPasswordResetEmail({ to, name, resetUrl, expiresIn }) {
+    async sendPasswordResetEmail(params) {
+        const { to, name, resetUrl, expiresIn } = params;
         const subject = 'TaskHive — Password reset';
         const html = `
             <p>Hi ${name || ''},</p>
@@ -51,7 +73,8 @@ class EmailService {
         return this.sendMail({ to, subject, html, text });
     }
 
-    async sendTaskAssignmentEmail({ to, name, taskTitle, taskUrl }) {
+    async sendTaskAssignmentEmail(params) {
+        const { to, name, taskTitle, taskUrl } = params;
         const subject = 'TaskHive — New Task Assignment';
         const html = `
             <p>Hi ${name || ''},</p>
@@ -64,7 +87,8 @@ class EmailService {
         return this.sendMail({ to, subject, html, text });
     }
 
-    async sendTeamInviteEmail({ to, name, teamName, inviteUrl }) {
+    async sendTeamInviteEmail(params) {
+        const { to, name, teamName, inviteUrl } = params;
         const subject = 'TaskHive — Team Invitation';
         const html = `
             <p>Hi ${name || ''},</p>
@@ -77,7 +101,8 @@ class EmailService {
         return this.sendMail({ to, subject, html, text });
     }
 
-    async sendTaskDueReminderEmail({ to, name, taskTitle, taskUrl, dueDate }) {
+    async sendTaskDueReminderEmail(params) {
+        const { to, name, taskTitle, taskUrl, dueDate } = params;
         const subject = 'TaskHive — Task Due Soon';
         const html = `
             <p>Hi ${name || ''},</p>
@@ -89,6 +114,8 @@ class EmailService {
 
         return this.sendMail({ to, subject, html, text });
     }
+
+
 }
 
 module.exports = new EmailService();

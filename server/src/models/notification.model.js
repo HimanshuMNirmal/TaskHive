@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const NotificationSchema = new Schema({
+  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   type: {
     type: String,
@@ -21,8 +22,8 @@ const NotificationSchema = new Schema({
   timestamps: true 
 });
 
-NotificationSchema.index({ userId: 1, isRead: 1 });
-NotificationSchema.index({ userId: 1, createdAt: -1 });
+NotificationSchema.index({ organizationId: 1, userId: 1, isRead: 1 });
+NotificationSchema.index({ organizationId: 1, userId: 1, createdAt: -1 });
 
 NotificationSchema.methods.markAsRead = function() {
   this.isRead = true;
