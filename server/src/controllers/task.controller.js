@@ -31,15 +31,20 @@ exports.createTask = async (req, res) => {
     });
 
     if (assigneeId) {
-        const User = require('../models/user.model');
-        const assignee = await User.findById(assigneeId).select('name email');
-        if (assignee) {
-            await emailService.sendTaskAssignmentEmail({
-                to: assignee.email,
-                name: assignee.name,
-                taskTitle: title,
-                taskUrl: `${process.env.CLIENT_URL}/tasks/${task._id}`
-            });
+        try {
+            const User = require('../models/user.model');
+            const assignee = await User.findById(assigneeId).select('name email');
+            if (assignee) {
+                emailService.sendTaskAssignmentEmail({
+                    to: assignee.email,
+                    name: assignee.name,
+                    taskTitle: title,
+                    taskUrl: `${process.env.CLIENT_URL}/tasks/${task._id}`
+                });
+            }
+        } catch (emailError) {
+            console.error('Failed to send assignment email:', emailError.message);
+            // Continue without interrupting the flow
         }
     }
 
@@ -49,6 +54,7 @@ exports.createTask = async (req, res) => {
         data: { task }
     });
 };
+
 
 exports.getTasks = async (req, res) => {
     const {
