@@ -231,6 +231,7 @@ export default function TeamsPage() {
           <button
             className={styles["create-team-btn"]}
             onClick={() => setIsCreating(true)}
+            disabled={isCreatingTeam}
           >
             Create Team
           </button>
@@ -266,15 +267,17 @@ export default function TeamsPage() {
                 <h2>{selectedTeam?.name ?? 'Untitled Team'}</h2>
                 {isAdmin(selectedTeam?._id) && can('team:update') && (
                   <div className={styles["header-actions"]}>
-                    <button onClick={() => setIsEditing(true)}>Edit</button>
+                    <button onClick={() => setIsEditing(true)} disabled={isUpdatingTeam}>
+                      {isUpdatingTeam ? 'Updating...' : 'Edit'}
+                    </button>
                     <PermissionGuard require="team:delete">
                       <button
                         className={styles["danger"]}
                         onClick={() => selectedTeam?._id && handleDeleteTeam(selectedTeam._id)}
-                        disabled={!selectedTeam?._id}
-                        title={!selectedTeam?._id ? 'No team selected' : 'Delete team'}
+                        disabled={!selectedTeam?._id || isDeletingTeam}
+                        title={!selectedTeam?._id ? 'No team selected' : (isDeletingTeam ? 'Deleting...' : 'Delete team')}
                       >
-                        Delete
+                        {isDeletingTeam ? 'Deleting...' : 'Delete'}
                       </button>
                     </PermissionGuard>
                   </div>
@@ -329,10 +332,10 @@ export default function TeamsPage() {
                     </select>
                     <button
                       onClick={() => handleAddMember(selectedTeam._id)}
-                      disabled={!selectedUserId || !selectedTeam?._id}
-                      title={!selectedUserId ? 'Select a user' : (!selectedTeam?._id ? 'No team selected' : 'Invite')}
+                      disabled={!selectedUserId || !selectedTeam?._id || isAddingMember}
+                      title={!selectedUserId ? 'Select a user' : (!selectedTeam?._id ? 'No team selected' : (isAddingMember ? 'Inviting...' : 'Invite'))}
                     >
-                      Invite
+                      {isAddingMember ? 'Inviting...' : 'Invite'}
                     </button>
                   </div>
                 )}
@@ -350,6 +353,7 @@ export default function TeamsPage() {
                             <select
                               value={member?.role ?? 'member'}
                               onChange={e => handleUpdateMemberRole(selectedTeam._id, memberId, e.target.value)}
+                              disabled={isUpdatingRole}
                             >
                               <option value="member">Member</option>
                               <option value="manager">Manager</option>
@@ -363,10 +367,10 @@ export default function TeamsPage() {
                           <button
                             className={styles["remove-member"]}
                             onClick={() => handleRemoveMember(selectedTeam._id, memberId)}
-                            disabled={!memberId}
-                            title={!memberId ? 'Cannot remove: missing id' : 'Remove member'}
+                            disabled={!memberId || isRemovingMember}
+                            title={!memberId ? 'Cannot remove: missing id' : (isRemovingMember ? 'Removing...' : 'Remove member')}
                           >
-                            Remove
+                            {isRemovingMember ? 'Removing...' : 'Remove'}
                           </button>
                         )}
                       </div>
@@ -498,10 +502,13 @@ export default function TeamsPage() {
                   Private Team
                 </label>
                 <div className={styles["modal-actions"]}>
-                  <button type="submit">Create</button>
+                  <button type="submit" disabled={isCreatingTeam}>
+                    {isCreatingTeam ? 'Creating...' : 'Create'}
+                  </button>
                   <button
                     type="button"
                     onClick={() => setIsCreating(false)}
+                    disabled={isCreatingTeam}
                   >
                     Cancel
                   </button>
@@ -550,10 +557,13 @@ export default function TeamsPage() {
                   Private Team
                 </label>
                 <div className={styles["modal-actions"]}>
-                  <button type="submit">Save</button>
+                  <button type="submit" disabled={isUpdatingTeam}>
+                    {isUpdatingTeam ? 'Saving...' : 'Save'}
+                  </button>
                   <button
                     type="button"
                     onClick={() => setIsEditing(false)}
+                    disabled={isUpdatingTeam}
                   >
                     Cancel
                   </button>

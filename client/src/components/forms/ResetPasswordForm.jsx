@@ -10,6 +10,7 @@ const ResetPasswordForm = ({ token }) => {
     confirmPassword: ''
   });
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -28,6 +29,7 @@ const ResetPasswordForm = ({ token }) => {
       return;
     }
 
+    setIsLoading(true);
     try {
       await authApi.resetPassword(token, formData.password);
       navigate('/login', { 
@@ -35,6 +37,8 @@ const ResetPasswordForm = ({ token }) => {
       });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to reset password');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -70,8 +74,8 @@ const ResetPasswordForm = ({ token }) => {
         />
       </div>
 
-      <button type="submit" className={styles.submitButton}>
-        Reset Password
+      <button type="submit" className={styles.submitButton} disabled={isLoading}>
+        {isLoading ? 'Resetting...' : 'Reset Password'}
       </button>
 
       <div className={styles.links}>

@@ -2,8 +2,11 @@ import axios from 'axios';
 import { getToken, removeToken } from '../utils/storage';
 import apiQueue from '../utils/apiQueue';
 
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
+console.log('API Base URL:', baseURL);
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api',
+  baseURL: baseURL,
   withCredentials: false
 });
 

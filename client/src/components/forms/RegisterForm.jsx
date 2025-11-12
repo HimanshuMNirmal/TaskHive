@@ -15,6 +15,7 @@ export function RegisterForm() {
     organizationSlug: ''
   })
   const [error, setError] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -27,11 +28,14 @@ export function RegisterForm() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+    setIsLoading(true)
     try {
       await dispatch(registerUser(formData)).unwrap()
       navigate('/login')
     } catch (err) {
       setError(err.message || 'Failed to register')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -112,8 +116,8 @@ export function RegisterForm() {
         <small className={styles.hint}>This will be used in your organization's URL: taskhive.com/{formData.organizationSlug || 'my-company'}</small>
       </div>
 
-      <button type="submit" className={styles.submitButton}>
-        Create Organization
+      <button type="submit" className={styles.submitButton} disabled={isLoading}>
+        {isLoading ? 'Creating...' : 'Create Organization'}
       </button>
 
       <div className={styles.links}>

@@ -292,6 +292,7 @@ export default function TasksPage() {
             <button
               className={styles["create-task-btn"]}
               onClick={() => setIsCreating(true)}
+              disabled={isCreatingTask}
             >
               Create Task
             </button>
@@ -357,6 +358,7 @@ export default function TasksPage() {
                 if (v) handleBulkUpdate({ status: v });
                 e.target.value = '';
               }}
+              disabled={isBulkUpdating}
               defaultValue=""
             >
               <option value="">Update Status</option>
@@ -371,6 +373,7 @@ export default function TasksPage() {
                 if (v) handleBulkUpdate({ priority: v });
                 e.target.value = '';
               }}
+              disabled={isBulkUpdating}
               defaultValue=""
             >
               <option value="">Update Priority</option>
@@ -382,6 +385,7 @@ export default function TasksPage() {
             <button
               className={styles["clear-selection"]}
               onClick={() => dispatch(setSelectedTasks([]))}
+              disabled={isBulkUpdating}
             >
               Clear Selection
             </button>
@@ -468,9 +472,10 @@ export default function TasksPage() {
                 <PermissionGuard require="task:delete">
                   <button
                     onClick={() => currentTask?._id && handleDeleteTask(currentTask._id)}
-                    disabled={!currentTask?._id}
+                    disabled={!currentTask?._id || isDeletingTask}
+                    title={!currentTask?._id ? 'Cannot delete: missing id' : (isDeletingTask ? 'Deleting...' : 'Delete task')}
                   >
-                    Delete
+                    {isDeletingTask ? 'Deleting...' : 'Delete'}
                   </button>
                 </PermissionGuard>
               </div>

@@ -246,12 +246,14 @@ export default function AdminPage() {
             <button
               className={`${styles["nav-item"]} ${activeTab === 'users' ? styles.active : ''}`}
               onClick={() => setActiveTab('users')}
+              disabled={isLoading}
             >
               Users & Roles
             </button>
             <button
               className={`${styles["nav-item"]} ${activeTab === 'analytics' ? styles.active : ''}`}
               onClick={() => setActiveTab('analytics')}
+              disabled={isLoading}
             >
               Analytics
             </button>
@@ -287,8 +289,8 @@ export default function AdminPage() {
             <div className={styles["section-content"]}>
               <div className={styles["section-header"]}>
                 <h2>User Management</h2>
-                <button onClick={() => setIsCreatingUser(true)}>
-                  Create User
+                <button onClick={() => setIsCreatingUser(true)} disabled={reduxIsCreatingUser}>
+                  {reduxIsCreatingUser ? 'Creating User...' : 'Create User'}
                 </button>
               </div>
 
@@ -354,9 +356,10 @@ export default function AdminPage() {
                                 <button
                                   className={styles["remove-permission"]}
                                   onClick={() => handleRemovePermission(role._id, permissionId)}
-                                  title={`Remove ${permissionName} permission`}
+                                  disabled={reduxIsRemovingPermission}
+                                  title={`${reduxIsRemovingPermission ? 'Removing...' : 'Remove'} ${permissionName} permission`}
                                 >
-                                  ×
+                                  {reduxIsRemovingPermission ? '⏳' : '×'}
                                 </button>
                               </div>
                             );

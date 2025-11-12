@@ -7,15 +7,19 @@ export function ForgotPasswordForm() {
   const [email, setEmail] = useState('')
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+    setIsLoading(true)
     try {
       await authApi.forgotPassword(email)
       setSuccess(true)
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send reset email')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -50,8 +54,8 @@ export function ForgotPasswordForm() {
         />
       </div>
 
-      <button type="submit" className={styles.submitButton}>
-        Send Reset Link
+      <button type="submit" className={styles.submitButton} disabled={isLoading}>
+        {isLoading ? 'Sending...' : 'Send Reset Link'}
       </button>
 
       <div className={styles.links}>
